@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculadora Nutricional TACO/TBCA & IA Gemini</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .tab-btn.active {
+      color: #15803d;
+      border-bottom-color: #15803d;
+      background-color: #f0fdf4;
+    }
+    .badge-emagrecer { background-color: #e0f2fe; color: #0369a1; }
+    .badge-hipertrofia { background-color: #fef3c7; color: #b45309; }
+    .badge-ambos { background-color: #dcfce7; color: #15803d; }
+    
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+    .pulse-ai { animation: pulse-ring 2s infinite; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-full flex flex-col justify-between">
+
+<!-- TOAST / NOTIFICATION MESSAGES CONTAINER -->
+<div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-sm"></div>
+
+<!-- APP CONTAINER -->
+<div class="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1">
+  
+  <!-- HEADER -->
+  <header class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+    <div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold text-xl shadow-md">
+          <i class="fa-solid fa-leaf"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900 tracking-tight">NutriFit TACO + IA Gemini</h1>
+          <p class="text-sm text-slate-500">Calculadora Nutricional, Diário, Cardápio Semanal & Assistente Inteligente</p>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1.5 rounded-full text-xs font-semibold">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      Gemini 3.1 & Imagen 4 Ativados
+    </div>
+  </header>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="flex border-b border-slate-200 bg-white rounded-t-xl px-2 pt-2 gap-1 overflow-x-auto shadow-sm">
+    <button class="tab-btn active px-4 py-3 font-medium text-sm text-slate-600 border-b-2 border-transparent rounded-t-lg flex items-center gap-2 whitespace-nowrap transition-all" onclick="switchTab('tab-perfil', event)">
+      <i class="fa-solid fa-user text-slate-400"></i> Perfil & IMC
+    </button>
+    <button class="tab-btn px-4 py-3 font-medium text-sm text-slate-600 border-b-2 border-transparent rounded-t-lg flex items-center gap-2 whitespace-nowrap transition-all" onclick="switchTab('tab-diario', event)">
+      <i class="fa-solid fa-calendar-day text-slate-400"></i> Diário & Calendário
+    </button>
+    <button class="tab-btn px-4 py-3 font-medium text-sm text-slate-600 border-b-2 border-transparent rounded-t-lg flex items-center gap-2 whitespace-nowrap transition-all" onclick="switchTab('tab-cardapio', event)">
+      <i class="fa-solid fa-calendar-week text-slate-400"></i> Cardápio Semanal
+    </button>
+    <button class="tab-btn px-4 py-3 font-medium text-sm text-brand-700 border-b-2 border-transparent rounded-t-lg flex items-center gap-2 whitespace-nowrap transition-all font-semibold bg-emerald-50/50" onclick="switchTab('tab-gemini', event)">
+      <i class="fa-solid fa-wand-magic-sparkles text-brand-600"></i> IA Nutri & Scanner
+    </button>
+    <button class="tab-btn px-4 py-3 font-medium text-sm text-slate-600 border-b-2 border-transparent rounded-t-lg flex items-center gap-2 whitespace-nowrap transition-all" onclick="switchTab('tab-taco', event)">
+      <i class="fa-solid fa-database text-slate-400"></i> Tabela TACO/TBCA
+    </button>
+  </nav>
+
+  <!-- TAB CONTENTS -->
+  <div class="bg-white rounded-b-xl border-x border-b border-slate-200/80 p-6 shadow-sm">
+
+    <!-- TAB 1: PERFIL E IMC -->
+    <div id="tab-perfil" class="tab-content block space-y-6">
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-5">
+        <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-brand-600"></i> 1. Dados Corporais e Objetivo
+        </h2>
+        <form id="perfil-form" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Idade</label>
+              <input type="number" id="idade" value="25" min="10" max="100" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none" required>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Sexo Biológico</label>
+              <select id="sexo" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                <option value="m">Masculino</option>
+                <option value="f">Feminino</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Peso (kg)</label>
+              <input type="number" id="peso" step="0.1" value="70.0" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none" required>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Altura (cm)</label>
+              <input type="number" id="altura" value="170" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none" required>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Objetivo Principal</label>
+              <select id="objetivo" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                <option value="emagrecer">Emagrecimento (Perda de Gordura)</option>
+                <option value="hipertrofia">Ganho de Massa Muscular (Hipertrofia)</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 px-6 rounded-lg transition text-sm shadow">
+            Calcular Necessidades & Gerar Recomendações
+          </button>
+        </form>
+      </div>
+
+      <!-- RESULTADOS E METAS -->
+      <div id="resultado-perfil" class="hidden space-y-6">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+            <div class="text-xs text-slate-500 font-medium">IMC (kg/m²)</div>
+            <div id="res-imc" class="text-2xl font-bold text-brand-700 mt-1">--</div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+            <div class="text-xs text-slate-500 font-medium">Classificação OMS</div>
+            <div id="res-class" class="text-base font-bold text-slate-800 mt-1">--</div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+            <div class="text-xs text-slate-500 font-medium">Meta Calórica Diária</div>
+            <div id="res-meta-kcal" class="text-2xl font-bold text-brand-700 mt-1">--</div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+            <div class="text-xs text-slate-500 font-medium">Meta Proteína (g/dia)</div>
+            <div id="res-meta-prot" class="text-2xl font-bold text-slate-800 mt-1">--</div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-md font-bold text-slate-800 mb-2">Alimentos TACO/TBCA Indicados para Você</h3>
+          <div class="overflow-x-auto rounded-lg border border-slate-200">
+            <table id="tabela-recomendados" class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-100 text-slate-700 text-xs font-semibold uppercase">
+                <tr>
+                  <th class="p-3">Alimento</th>
+                  <th class="p-3">Categoria</th>
+                  <th class="p-3">Kcal (100g)</th>
+                  <th class="p-3">Proteína</th>
+                  <th class="p-3">Carboidrato</th>
+                  <th class="p-3">Perfil</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: DIÁRIO DE ALIMENTAÇÃO E CALENDÁRIO -->
+    <div id="tab-diario" class="tab-content hidden space-y-6">
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-calendar-days text-brand-600"></i> Diário Alimentar
+          </h2>
+          <div class="flex items-center gap-2 bg-white p-1.5 rounded-lg border border-slate-200">
+            <label for="data-diario" class="text-xs font-semibold text-slate-600 px-2">Data:</label>
+            <input type="date" id="data-diario" class="text-sm p-1 border rounded border-slate-300 focus:outline-none">
+            <button onclick="irParaHoje()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-1.5 rounded font-medium transition">Hoje</button>
+          </div>
+        </div>
+
+        <!-- FORMULARIO MANUAL DE ADICAO -->
+        <form id="diario-form" class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+          <div class="sm:col-span-6">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Selecionar Alimento (TACO/TBCA)</label>
+            <select id="select-alimento-diario" class="w-full rounded-lg border border-slate-300 p-2 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none" required></select>
+          </div>
+          <div class="sm:col-span-3">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Quantidade (g)</label>
+            <input type="number" id="qtd-diario" value="100" min="1" class="w-full rounded-lg border border-slate-300 p-2 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none" required>
+          </div>
+          <div class="sm:col-span-3">
+            <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2 px-4 rounded-lg transition text-sm shadow">
+              + Adicionar
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- RESUMO NUTRICIONAL DO DIA -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-center">
+          <div class="text-xs text-emerald-700 font-semibold uppercase">Calorias</div>
+          <div id="sum-kcal" class="text-2xl font-bold text-emerald-900 mt-1">0</div>
+        </div>
+        <div class="bg-slate-100 border border-slate-200 p-4 rounded-xl text-center">
+          <div class="text-xs text-slate-600 font-semibold uppercase">Proteínas</div>
+          <div id="sum-prot" class="text-xl font-bold text-slate-800 mt-1">0 g</div>
+        </div>
+        <div class="bg-slate-100 border border-slate-200 p-4 rounded-xl text-center">
+          <div class="text-xs text-slate-600 font-semibold uppercase">Carboidratos</div>
+          <div id="sum-carb" class="text-xl font-bold text-slate-800 mt-1">0 g</div>
+        </div>
+        <div class="bg-slate-100 border border-slate-200 p-4 rounded-xl text-center">
+          <div class="text-xs text-slate-600 font-semibold uppercase">Gorduras</div>
+          <div id="sum-gord" class="text-xl font-bold text-slate-800 mt-1">0 g</div>
+        </div>
+      </div>
+
+      <!-- TABELA DO DIA -->
+      <div class="overflow-x-auto rounded-xl border border-slate-200">
+        <table class="w-full text-left text-sm text-slate-600">
+          <thead class="bg-slate-100 text-slate-700 text-xs font-semibold uppercase">
+            <tr>
+              <th class="p-3">Alimento</th>
+              <th class="p-3">Qtd</th>
+              <th class="p-3">Calorias</th>
+              <th class="p-3">Proteínas</th>
+              <th class="p-3">Carbos</th>
+              <th class="p-3">Gorduras</th>
+              <th class="p-3 text-center">Ação</th>
+            </tr>
+          </thead>
+          <tbody id="lista-diario" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 3: CARDÁPIO SEMANAL -->
+    <div id="tab-cardapio" class="tab-content hidden space-y-6">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800">Planejador de Cardápio Semanal</h2>
+          <p class="text-xs text-slate-500">Monte ou ajuste seu planejamento alimentar para os 7 dias da semana.</p>
+        </div>
+        <button onclick="gerarCardapioSugerido()" class="bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition shadow flex items-center gap-2">
+          <i class="fa-solid fa-bolt"></i> Gerar Cardápio Sugerido
+        </button>
+      </div>
+
+      <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Adicionar Item ao Planejador</h3>
+        <form id="cardapio-form" class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+          <div class="sm:col-span-3">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Dia da Semana</label>
+            <select id="cardapio-dia" class="w-full rounded-lg border border-slate-300 p-2 text-sm focus:outline-none">
+              <option value="Segunda">Segunda-feira</option>
+              <option value="Terca">Terça-feira</option>
+              <option value="Quarta">Quarta-feira</option>
+              <option value="Quinta">Quinta-feira</option>
+              <option value="Sexta">Sexta-feira</option>
+              <option value="Sabado">Sábado</option>
+              <option value="Domingo">Domingo</option>
+            </select>
+          </div>
+          <div class="sm:col-span-3">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Refeição</label>
+            <select id="cardapio-refeicao" class="w-full rounded-lg border border-slate-300 p-2 text-sm focus:outline-none">
+              <option value="Café da Manhã">Café da Manhã</option>
+              <option value="Almoço">Almoço</option>
+              <option value="Lanche">Lanche</option>
+              <option value="Jantar">Jantar</option>
+              <option value="Ceia">Ceia</option>
+            </select>
+          </div>
+          <div class="sm:col-span-4">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Alimento (TACO)</label>
+            <select id="select-alimento-cardapio" class="w-full rounded-lg border border-slate-300 p-2 text-sm focus:outline-none" required></select>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Gramas</label>
+            <input type="number" id="qtd-cardapio" value="100" min="1" class="w-full rounded-lg border border-slate-300 p-2 text-sm focus:outline-none" required>
+          </div>
+          <div class="sm:col-span-12">
+            <button type="submit" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2 px-4 rounded-lg text-sm transition">
+              + Incluir na Semana
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="weekly-container"></div>
+    </div>
+
+    <!-- TAB 4: RECURSOS DA IA GEMINI (SCANNER, RECEITAS E CHAT) -->
+    <div id="tab-gemini" class="tab-content hidden space-y-6">
+      <div class="bg-emerald-950 text-white p-6 rounded-2xl shadow-md relative overflow-hidden">
+        <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl font-black text-emerald-400 select-none">
+          <i class="fa-solid fa-brain"></i>
+        </div>
+        <div class="relative z-10 max-w-2xl">
+          <span class="bg-emerald-800/80 text-emerald-300 text-xs px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider">Potencializado por Gemini API</span>
+          <h2 class="text-2xl font-bold mt-2">Central Inteligente Nutricional</h2>
+          <p class="text-emerald-200/90 text-sm mt-1">Escaneie pratos por foto/texto, crie receitas adaptadas às suas metas e converse em tempo real com seu assistente nutricional com síntese de voz.</p>
+        </div>
+      </div>
+
+      <!-- NAV SUB-ABAS GEMINI -->
+      <div class="flex border-b border-slate-200 gap-2">
+        <button id="btn-sub-scanner" onclick="switchSubGemini('sub-scanner')" class="px-4 py-2 text-sm font-semibold border-b-2 border-brand-600 text-brand-700">
+          <i class="fa-solid fa-camera mr-1"></i> 1. Scanner de Refeição (Foto/Texto)
+        </button>
+        <button id="btn-sub-receita" onclick="switchSubGemini('sub-receita')" class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700">
+          <i class="fa-solid fa-utensils mr-1"></i> 2. Gerador de Receitas + Imagem Imagen 4
+        </button>
+        <button id="btn-sub-chat" onclick="switchSubGemini('sub-chat')" class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700">
+          <i class="fa-solid fa-comments mr-1"></i> 3. Chat Nutri + Voz Gemini TTS
+        </button>
+      </div>
+
+      <!-- SUB-ABA 1: SCANNER DE REFEICAO (FOTO OU TEXTO) -->
+      <div id="sub-scanner" class="space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- LADO ESQUERDO: INPUT FOTO / TEXTO -->
+          <div class="bg-slate-50 border border-slate-200 p-5 rounded-xl space-y-4">
+            <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+              <i class="fa-solid fa-camera text-brand-600"></i> Opção A: Escanear por Foto do Prato
+            </h3>
+            
+            <div id="drop-zone" class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-xl p-6 text-center bg-white cursor-pointer transition">
+              <input type="file" id="image-input" accept="image/*" class="hidden" onchange="handleImageSelected(event)">
+              <div id="image-preview-container" class="hidden relative inline-block mb-2">
+                <img id="image-preview" src="" class="max-h-48 rounded-lg shadow-md mx-auto">
+                <button onclick="clearImagePreview(event)" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow">×</button>
+              </div>
+              <div id="image-prompt-text">
+                <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 mb-2"></i>
+                <p class="text-sm font-medium text-slate-700">Clique para enviar uma foto do prato</p>
+                <p class="text-xs text-slate-400 mt-1">Formatos suportados: JPG, PNG, WEBP</p>
+              </div>
+            </div>
+
+            <hr class="border-slate-200">
+
+            <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+              <i class="fa-solid fa-pen-to-square text-brand-600"></i> Opção B: Descrever em Linguagem Natural
+            </h3>
+            <textarea id="text-meal-input" rows="3" class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="Ex: Comi um prato com 150g de frango grelhado, 3 colheres de arroz integral e salada de alface e tomate..."></textarea>
+
+            <button onclick="analisarRefeicaoComIA()" id="btn-analisar-meal" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 px-4 rounded-xl transition text-sm shadow flex items-center justify-center gap-2">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Analisar Refeição com IA Gemini
+            </button>
+          </div>
+
+          <!-- LADO DIREITO: RESULTADO IDENTIFICADO -->
+          <div class="bg-white border border-slate-200 p-5 rounded-xl space-y-4 flex flex-col justify-between">
+            <div>
+              <h3 class="font-bold text-slate-800 text-sm mb-2 flex items-center justify-between">
+                <span>Alimentos Identificados pela IA</span>
+                <span id="scan-badge" class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded">Aguardando...</span>
+              </h3>
+              <p class="text-xs text-slate-500 mb-4">Confira e ajuste as estimativas geradas antes de registrar no seu diário.</p>
+
+              <div id="scanner-loading" class="hidden py-12 text-center">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand-500 border-t-transparent"></div>
+                <p class="text-xs text-slate-500 mt-2 font-medium">A IA Gemini está analisando os alimentos e estimando valores...</p>
+              </div>
+
+              <div id="scanner-empty" class="py-12 text-center text-slate-400">
+                <i class="fa-solid fa-utensils text-4xl mb-2"></i>
+                <p class="text-sm">Nenhuma refeição analisada ainda.</p>
+              </div>
+
+              <div id="scanner-result-table" class="hidden overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                  <thead class="bg-slate-100 text-slate-700 font-semibold uppercase">
+                    <tr>
+                      <th class="p-2">Item</th>
+                      <th class="p-2">Grams (g)</th>
+                      <th class="p-2">Kcal</th>
+                      <th class="p-2">Prot (g)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="scanner-tbody" class="divide-y divide-slate-100"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div id="scanner-actions" class="hidden pt-4 border-t border-slate-100">
+              <button onclick="adicionarScannerAoDiario()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-lg transition text-sm shadow flex items-center justify-center gap-2">
+                <i class="fa-solid fa-plus-circle"></i> Adicionar Todos ao Diário de Hoje
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUB-ABA 2: GERADOR DE RECEITAS + IMAGEN 4 -->
+      <div id="sub-receita" class="hidden space-y-6">
+        <div class="bg-slate-50 border border-slate-200 p-5 rounded-xl space-y-4">
+          <h3 class="font-bold text-slate-800 text-sm">Configurar Preferências da Receita</h3>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Ingredientes Disponíveis (ou deixe livre)</label>
+              <input type="text" id="recipe-ingredients" placeholder="Ex: Ovos, aveia, banana, frango..." class="w-full rounded-lg border border-slate-300 p-2 text-sm focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo de Refeição</label>
+              <select id="recipe-type" class="w-full rounded-lg border border-slate-300 p-2 text-sm focus:outline-none">
+                <option value="Café da Manhã">Café da Manhã</option>
+                <option value="Almoço / Jantar">Almoço / Jantar</option>
+                <option value="Lanche Rápido">Lanche Rápido</option>
+                <option value="Sobremesa Fit">Sobremesa Fit</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Restrição / Foco</label>
+              <select id="recipe-focus" class="w-full rounded-lg border border-slate-300 p-2 text-sm focus:outline-none">
+                <option value="Alta em Proteína">Alta em Proteína</option>
+                <option value="Baixa em Carboidratos (Low Carb)">Low Carb</option>
+                <option value="Sem Lactose">Sem Lactose</option>
+                <option value="Vegana / Vegetariana">Vegana / Vegetariana</option>
+              </select>
+            </div>
+          </div>
+
+          <button onclick="gerarReceitaIA()" id="btn-gerar-receita" class="bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 px-6 rounded-lg transition text-sm shadow flex items-center gap-2">
+            <i class="fa-solid fa-utensils"></i> Gerar Receita com Gemini
+          </button>
+        </div>
+
+        <!-- EXIBICAO DA RECEITA E IMAGEM -->
+        <div id="recipe-output-card" class="hidden bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+          <div class="flex flex-col md:flex-row gap-6">
+            
+            <div class="flex-1 space-y-4">
+              <div class="flex items-start justify-between border-b pb-3">
+                <div>
+                  <h3 id="recipe-title" class="text-xl font-bold text-slate-900"></h3>
+                  <p id="recipe-meta" class="text-xs text-slate-500 mt-0.5"></p>
+                </div>
+                <button onclick="falarModoPreparo()" id="btn-tts-recipe" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-volume-high text-brand-600"></i> Ouvir Modo de Preparo
+                </button>
+              </div>
+
+              <div>
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Ingredientes:</h4>
+                <ul id="recipe-ingredients-list" class="list-disc list-inside text-sm text-slate-700 space-y-1"></ul>
+              </div>
+
+              <div>
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Modo de Preparo:</h4>
+                <ol id="recipe-steps-list" class="list-decimal list-inside text-sm text-slate-700 space-y-1.5"></ol>
+              </div>
+            </div>
+
+            <!-- FOTO GERADA PELA IA (IMAGEN 4) -->
+            <div class="w-full md:w-80 flex flex-col items-center justify-center bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+              <div id="recipe-image-container" class="w-full h-64 bg-slate-200 rounded-lg overflow-hidden flex items-center justify-center text-slate-400 relative">
+                <i class="fa-solid fa-image text-4xl"></i>
+              </div>
+              <button onclick="gerarFotoComImagen4()" id="btn-generate-image" class="mt-3 w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Gerar Foto da Receita (Imagen 4)
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- SUB-ABA 3: CHAT NUTRI + VOZ GEMINI TTS -->
+      <div id="sub-chat" class="hidden space-y-4">
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col h-[500px]">
+          
+          <!-- CHAT MESSAGES -->
+          <div id="chat-messages" class="flex-1 overflow-y-auto space-y-3 p-2">
+            <div class="bg-white border border-slate-200 p-3 rounded-xl max-w-[85%] text-sm text-slate-700">
+              <div class="font-bold text-xs text-brand-700 mb-1 flex items-center gap-1">
+                <i class="fa-solid fa-robot"></i> Assistente NutriFit IA
+              </div>
+              Olá! Sou seu nutricionista IA baseado na tabela TACO/TBCA. Como posso te ajudar hoje? Posso tirar dúvidas, analisar seus macros atuais ou sugerir trocas saudáveis!
+            </div>
+          </div>
+
+          <!-- QUICK PROMPTS -->
+          <div class="flex gap-2 py-2 overflow-x-auto">
+            <button onclick="sendQuickChat('Avalie meu consumo de calorias e proteínas do diário de hoje.')" class="bg-white hover:bg-slate-100 border border-slate-200 text-xs px-3 py-1.5 rounded-full text-slate-600 whitespace-nowrap transition">
+              💡 Avaliar meu diário de hoje
+            </button>
+            <button onclick="sendQuickChat('Quais os melhores alimentos da tabela TACO para ganho de massa muscular?')" class="bg-white hover:bg-slate-100 border border-slate-200 text-xs px-3 py-1.5 rounded-full text-slate-600 whitespace-nowrap transition">
+              💪 Melhores alimentos para massa muscular
+            </button>
+            <button onclick="sendQuickChat('O que posso jantar para bater minhas proteínas hoje sem estourar as calorias?')" class="bg-white hover:bg-slate-100 border border-slate-200 text-xs px-3 py-1.5 rounded-full text-slate-600 whitespace-nowrap transition">
+              🥗 Sugestão de jantar leve
+            </button>
+          </div>
+
+          <!-- INPUT CHAT -->
+          <form id="chat-form" onsubmit="handleChatSubmit(event)" class="flex gap-2 pt-2 border-t border-slate-200">
+            <input type="text" id="chat-input" placeholder="Pergunte algo sobre sua dieta ou nutrição..." class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </form>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 5: BANCO DE DADOS TACO / TBCA -->
+    <div id="tab-taco" class="tab-content hidden space-y-4">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <h2 class="text-lg font-bold text-slate-800">Tabela TACO / TBCA Completa (por 100g)</h2>
+        <input type="text" id="taco-search" placeholder="🔍 Buscar alimento por nome ou categoria..." class="w-full sm:w-80 rounded-lg border border-slate-300 p-2 text-sm focus:outline-none" oninput="filtrarTabelaTaco()">
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-200">
+        <table id="tabela-taco-completa" class="w-full text-left text-sm text-slate-600">
+          <thead class="bg-slate-100 text-slate-700 text-xs font-semibold uppercase">
+            <tr>
+              <th class="p-3">Alimento</th>
+              <th class="p-3">Categoria</th>
+              <th class="p-3">Energia</th>
+              <th class="p-3">Proteínas</th>
+              <th class="p-3">Carboidratos</th>
+              <th class="p-3">Lípedios</th>
+              <th class="p-3">Fibras</th>
+              <th class="p-3">Perfil Indicado</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  /* GEMINI API CONFIGURATION & RETRY BACKOFF HELPER */
+  const apiKey = ""; // Canvas injects key dynamically at runtime
+  
+  async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url, options);
+        if (response.ok) return response;
+        if (response.status === 429) {
+          await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));
+          continue;
+        }
+        throw new Error(`HTTP Error ${response.status}`);
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));
+      }
+    }
+  }
+
+  /* BANCO DE DADOS TACO / TBCA */
+  const bancoTACO = [
+    { id: 1, nome: "Arroz integral cozido", cat: "Cereais", kcal: 124, prot: 2.6, carb: 25.8, gord: 1.0, fibra: 2.7, perfil: "emagrecer" },
+    { id: 2, nome: "Arroz branco cozido", cat: "Cereais", kcal: 128, prot: 2.5, carb: 28.1, gord: 0.2, fibra: 1.6, perfil: "hipertrofia" },
+    { id: 3, nome: "Aveia em flocos", cat: "Cereais", kcal: 394, prot: 13.9, carb: 66.6, gord: 8.5, fibra: 9.1, perfil: "ambos" },
+    { id: 4, nome: "Pão de fôrma integral", cat: "Cereais", kcal: 253, prot: 9.4, carb: 49.9, gord: 3.7, fibra: 6.9, perfil: "emagrecer" },
+    { id: 5, nome: "Pão francês", cat: "Cereais", kcal: 300, prot: 8.0, carb: 58.6, gord: 3.1, fibra: 2.3, perfil: "hipertrofia" },
+    { id: 6, nome: "Tapioca / Goma", cat: "Cereais", kcal: 242, prot: 0.2, carb: 60.0, gord: 0.2, fibra: 0.5, perfil: "hipertrofia" },
+    { id: 7, nome: "Macarrão cozido", cat: "Cereais", kcal: 157, prot: 5.8, carb: 30.9, gord: 0.9, fibra: 1.8, perfil: "hipertrofia" },
+    { id: 8, nome: "Cuscuz de milho cozido", cat: "Cereais", kcal: 112, prot: 2.2, carb: 25.3, gord: 0.7, fibra: 1.9, perfil: "ambos" },
+    { id: 9, nome: "Feijão carioca cozido", cat: "Leguminosas", kcal: 76, prot: 4.8, carb: 13.6, gord: 0.5, fibra: 8.5, perfil: "ambos" },
+    { id: 10, nome: "Feijão preto cozido", cat: "Leguminosas", kcal: 77, prot: 4.5, carb: 14.0, gord: 0.5, fibra: 8.4, perfil: "ambos" },
+    { id: 11, nome: "Grão-de-bico cozido", cat: "Leguminosas", kcal: 164, prot: 8.9, carb: 27.4, gord: 2.6, fibra: 7.6, perfil: "ambos" },
+    { id: 12, nome: "Lentilha cozida", cat: "Leguminosas", kcal: 93, prot: 6.3, carb: 16.3, gord: 0.5, fibra: 7.9, perfil: "emagrecer" },
+    { id: 13, nome: "Peito de frango grelhado", cat: "Carnes/Aves", kcal: 159, prot: 32.0, carb: 0.0, gord: 2.5, fibra: 0.0, perfil: "ambos" },
+    { id: 14, nome: "Sobrecoxa de frango assada", cat: "Carnes/Aves", kcal: 233, prot: 28.5, carb: 0.0, gord: 12.4, fibra: 0.0, perfil: "hipertrofia" },
+    { id: 15, nome: "Carne moída (Patinho) grelhada", cat: "Carnes/Bovinos", kcal: 219, prot: 35.9, carb: 0.0, gord: 7.3, fibra: 0.0, perfil: "hipertrofia" },
+    { id: 16, nome: "Alcatra grelhada", cat: "Carnes/Bovinos", kcal: 241, prot: 31.9, carb: 0.0, gord: 11.6, fibra: 0.0, perfil: "hipertrofia" },
+    { id: 17, nome: "Filé de Tilápia grelhado", cat: "Peixes", kcal: 123, prot: 26.0, carb: 0.0, gord: 1.8, fibra: 0.0, perfil: "emagrecer" },
+    { id: 18, nome: "Atum em conserva em água", cat: "Peixes", kcal: 116, prot: 25.5, carb: 0.0, gord: 1.0, fibra: 0.0, perfil: "emagrecer" },
+    { id: 19, nome: "Salmão grelhado", cat: "Peixes", kcal: 229, prot: 23.9, carb: 0.0, gord: 14.0, fibra: 0.0, perfil: "hipertrofia" },
+    { id: 20, nome: "Ovo de galinha cozido", cat: "Ovos", kcal: 146, prot: 13.3, carb: 0.6, gord: 9.5, fibra: 0.0, perfil: "ambos" },
+    { id: 21, nome: "Batata-doce cozida", cat: "Hortaliças", kcal: 77, prot: 0.6, carb: 18.4, gord: 0.1, fibra: 2.2, perfil: "ambos" },
+    { id: 22, nome: "Mandioca cozida", cat: "Hortaliças", kcal: 125, prot: 0.6, carb: 30.1, gord: 0.3, fibra: 1.6, perfil: "hipertrofia" },
+    { id: 23, nome: "Brócolis cozido", cat: "Hortaliças", kcal: 25, prot: 2.1, carb: 4.4, gord: 0.5, fibra: 3.4, perfil: "emagrecer" },
+    { id: 24, nome: "Cenoura crua", cat: "Hortaliças", kcal: 34, prot: 1.3, carb: 7.7, gord: 0.2, fibra: 3.2, perfil: "emagrecer" },
+    { id: 25, nome: "Espinafre refogado", cat: "Hortaliças", kcal: 67, prot: 2.7, carb: 4.2, gord: 4.8, fibra: 2.5, perfil: "emagrecer" },
+    { id: 26, nome: "Alface crespa crua", cat: "Hortaliças", kcal: 11, prot: 1.3, carb: 1.7, gord: 0.2, fibra: 1.8, perfil: "emagrecer" },
+    { id: 27, nome: "Tomate cru", cat: "Hortaliças", kcal: 15, prot: 1.1, carb: 3.1, gord: 0.2, fibra: 1.2, perfil: "emagrecer" },
+    { id: 28, nome: "Banana Prata", cat: "Frutas", kcal: 98, prot: 1.3, carb: 26.0, gord: 0.1, fibra: 2.0, perfil: "hipertrofia" },
+    { id: 29, nome: "Maçã Fuji", cat: "Frutas", kcal: 56, prot: 0.3, carb: 15.2, gord: 0.2, fibra: 1.3, perfil: "emagrecer" },
+    { id: 30, nome: "Mamão Papaia", cat: "Frutas", kcal: 40, prot: 0.5, carb: 10.4, gord: 0.1, fibra: 1.8, perfil: "emagrecer" },
+    { id: 31, nome: "Abacate", cat: "Frutas", kcal: 96, prot: 1.2, carb: 6.0, gord: 8.4, fibra: 6.3, perfil: "ambos" },
+    { id: 32, nome: "Morango cru", cat: "Frutas", kcal: 30, prot: 0.9, carb: 6.8, gord: 0.3, fibra: 1.7, perfil: "emagrecer" },
+    { id: 33, nome: "Leite desnatado", cat: "Laticínios", kcal: 35, prot: 3.8, carb: 4.7, gord: 0.2, fibra: 0.0, perfil: "emagrecer" },
+    { id: 34, nome: "Queijo Minas Frescal", cat: "Laticínios", kcal: 264, prot: 17.4, carb: 3.2, gord: 20.2, fibra: 0.0, perfil: "ambos" },
+    { id: 35, nome: "Iogurte Natural Integral", cat: "Laticínios", kcal: 51, prot: 4.1, carb: 3.6, gord: 2.3, fibra: 0.0, perfil: "ambos" },
+    { id: 36, nome: "Pasta de amendoim", cat: "Oleaginosas", kcal: 617, prot: 28.3, carb: 11.2, gord: 50.0, fibra: 5.9, perfil: "hipertrofia" },
+    { id: 37, nome: "Castanha-do-Pará", cat: "Oleaginosas", kcal: 643, prot: 14.5, carb: 15.1, gord: 63.5, fibra: 7.9, perfil: "ambos" },
+    { id: 38, nome: "Azeite de oliva extra virgem", cat: "Óleos", kcal: 884, prot: 0.0, carb: 0.0, gord: 100.0, fibra: 0.0, perfil: "ambos" }
+  ];
+
+  /* STATE MANAGEMENT */
+  let diarioDados = JSON.parse(localStorage.getItem('taco_diario')) || {};
+  let cardapioSemanal = JSON.parse(localStorage.getItem('taco_cardapio')) || {
+    Segunda: [], Terca: [], Quarta: [], Quinta: [], Sexta: [], Sabado: [], Domingo: []
+  };
+  let scannerResultState = [];
+  let currentGeneratedRecipe = null;
+  let selectedBase64Image = null;
+
+  /* INITIALIZATION */
+  document.addEventListener('DOMContentLoaded', () => {
+    popularSelectsAlimentos();
+    renderizarTabelaTaco(bancoTACO);
+    document.getElementById('data-diario').valueAsDate = new Date();
+    carregarDiarioDoDia();
+    renderizarCardapioSemanal();
+  });
+
+  /* UI TOAST SYSTEM */
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    const colors = type === 'error' ? 'bg-red-600 text-white' : type === 'success' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-white';
+    toast.className = `${colors} px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 transform translate-y-2 flex items-center justify-between gap-3`;
+    toast.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()" class="opacity-70 hover:opacity-100">×</button>`;
+    container.appendChild(toast);
+    setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.remove(), 300); }, 4000);
+  }
+
+  /* NAVIGATION TABS */
+  function switchTab(tabId, event) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+    
+    if (event) event.currentTarget.classList.add('active');
+    document.getElementById(tabId).classList.remove('hidden');
+  }
+
+  function switchSubGemini(subId) {
+    ['sub-scanner', 'sub-receita', 'sub-chat'].forEach(id => {
+      document.getElementById(id).classList.add('hidden');
+    });
+    ['btn-sub-scanner', 'btn-sub-receita', 'btn-sub-chat'].forEach(id => {
+      const btn = document.getElementById(id);
+      btn.classList.remove('border-brand-600', 'text-brand-700');
+      btn.classList.add('border-transparent', 'text-slate-500');
+    });
+
+    document.getElementById(subId).classList.remove('hidden');
+    const activeBtn = document.getElementById(`btn-${subId}`);
+    activeBtn.classList.remove('border-transparent', 'text-slate-500');
+    activeBtn.classList.add('border-brand-600', 'text-brand-700');
+  }
+
+  /* POPULATE SELECTS */
+  function popularSelectsAlimentos() {
+    const selDiario = document.getElementById('select-alimento-diario');
+    const selCardapio = document.getElementById('select-alimento-cardapio');
+    selDiario.innerHTML = '';
+    selCardapio.innerHTML = '';
+
+    const sorted = [...bancoTACO].sort((a,b) => a.nome.localeCompare(b.nome));
+    sorted.forEach(item => {
+      const opt = `<option value="${item.id}">${item.nome} (${item.kcal} kcal/100g)</option>`;
+      selDiario.insertAdjacentHTML('beforeend', opt);
+      selCardapio.insertAdjacentHTML('beforeend', opt);
+    });
+  }
+
+  /* PERFIL E IMC */
+  document.getElementById('perfil-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const peso = parseFloat(document.getElementById('peso').value);
+    const alturaCm = parseFloat(document.getElementById('altura').value);
+    const idade = parseInt(document.getElementById('idade').value);
+    const sexo = document.getElementById('sexo').value;
+    const objetivo = document.getElementById('objetivo').value;
+
+    const altM = alturaCm / 100;
+    const imc = (peso / (altM * altM)).toFixed(1);
+
+    let classificacao = "";
+    if (imc < 18.5) classificacao = "Abaixo do peso";
+    else if (imc < 24.9) classificacao = "Peso normal";
+    else if (imc < 29.9) classificacao = "Sobrepeso";
+    else if (imc < 34.9) classificacao = "Obesidade I";
+    else classificacao = "Obesidade II/III";
+
+    let tmb = (10 * peso) + (6.25 * alturaCm) - (5 * idade);
+    tmb += (sexo === 'm') ? 5 : -161;
+
+    let metaKcal = Math.round(tmb * 1.35);
+    let metaProt = Math.round(peso * 1.6);
+
+    if (objetivo === 'emagrecer') {
+      metaKcal -= 400;
+      metaProt = Math.round(peso * 1.8);
+    } else {
+      metaKcal += 350;
+      metaProt = Math.round(peso * 2.0);
+    }
+
+    document.getElementById('res-imc').textContent = imc;
+    document.getElementById('res-class').textContent = classificacao;
+    document.getElementById('res-meta-kcal').textContent = metaKcal + " kcal";
+    document.getElementById('res-meta-prot').textContent = metaProt + " g";
+
+    const recomendados = bancoTACO.filter(a => a.perfil === objetivo || a.perfil === "ambos");
+    const tbody = document.querySelector('#tabela-recomendados tbody');
+    tbody.innerHTML = '';
+
+    recomendados.forEach(item => {
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr class="hover:bg-slate-50">
+          <td class="p-3 font-semibold text-slate-800">${item.nome}</td>
+          <td class="p-3">${item.cat}</td>
+          <td class="p-3 font-medium text-brand-700">${item.kcal}</td>
+          <td class="p-3">${item.prot}g</td>
+          <td class="p-3">${item.carb}g</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs font-semibold badge-${item.perfil}">${item.perfil}</span></td>
+        </tr>
+      `);
+    });
+
+    document.getElementById('resultado-perfil').classList.remove('hidden');
+    showToast('Perfil calculado com sucesso!', 'success');
+  });
+
+  /* DIÁRIO E CALENDÁRIO */
+  document.getElementById('data-diario').addEventListener('change', carregarDiarioDoDia);
+
+  function irParaHoje() {
+    document.getElementById('data-diario').valueAsDate = new Date();
+    carregarDiarioDoDia();
+  }
+
+  document.getElementById('diario-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const dataKey = document.getElementById('data-diario').value;
+    const foodId = parseInt(document.getElementById('select-alimento-diario').value);
+    const qtd = parseFloat(document.getElementById('qtd-diario').value);
+
+    const food = bancoTACO.find(a => a.id === foodId);
+    const factor = qtd / 100;
+
+    const itemDiario = {
+      uid: Date.now(),
+      nome: food.nome,
+      qtd: qtd,
+      kcal: food.kcal * factor,
+      prot: food.prot * factor,
+      carb: food.carb * factor,
+      gord: food.gord * factor
+    };
+
+    if (!diarioDados[dataKey]) diarioDados[dataKey] = [];
+    diarioDados[dataKey].push(itemDiario);
+
+    salvarDiario();
+    carregarDiarioDoDia();
+    showToast(`${food.nome} adicionado ao diário.`, 'success');
+  });
+
+  function carregarDiarioDoDia() {
+    const dataKey = document.getElementById('data-diario').value;
+    const lista = diarioDados[dataKey] || [];
+    const tbody = document.getElementById('lista-diario');
+    tbody.innerHTML = '';
+
+    let totalKcal = 0, totalProt = 0, totalCarb = 0, totalGord = 0;
+
+    lista.forEach(item => {
+      totalKcal += item.kcal;
+      totalProt += item.prot;
+      totalCarb += item.carb;
+      totalGord += item.gord;
+
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr class="hover:bg-slate-50">
+          <td class="p-3 font-semibold text-slate-800">${item.nome}</td>
+          <td class="p-3">${item.qtd}g</td>
+          <td class="p-3 font-medium text-emerald-700">${item.kcal.toFixed(1)}</td>
+          <td class="p-3">${item.prot.toFixed(1)}g</td>
+          <td class="p-3">${item.carb.toFixed(1)}g</td>
+          <td class="p-3">${item.gord.toFixed(1)}g</td>
+          <td class="p-3 text-center">
+            <button class="bg-red-500 hover:bg-red-600 text-white rounded px-2 py-1 text-xs font-semibold" onclick="removerItemDiario('${dataKey}', ${item.uid})">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `);
+    });
+
+    document.getElementById('sum-kcal').textContent = totalKcal.toFixed(0);
+    document.getElementById('sum-prot').textContent = totalProt.toFixed(1) + " g";
+    document.getElementById('sum-carb').textContent = totalCarb.toFixed(1) + " g";
+    document.getElementById('sum-gord').textContent = totalGord.toFixed(1) + " g";
+  }
+
+  function removerItemDiario(dataKey, uid) {
+    diarioDados[dataKey] = diarioDados[dataKey].filter(i => i.uid !== uid);
+    salvarDiario();
+    carregarDiarioDoDia();
+    showToast('Item removido do diário.', 'info');
+  }
+
+  function salvarDiario() {
+    localStorage.setItem('taco_diario', JSON.stringify(diarioDados));
+  }
+
+  /* CARDÁPIO SEMANAL */
+  document.getElementById('cardapio-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const dia = document.getElementById('cardapio-dia').value;
+    const refeicao = document.getElementById('cardapio-refeicao').value;
+    const foodId = parseInt(document.getElementById('select-alimento-cardapio').value);
+    const qtd = parseFloat(document.getElementById('qtd-cardapio').value);
+
+    const food = bancoTACO.find(a => a.id === foodId);
+    const factor = qtd / 100;
+
+    const itemCardapio = {
+      uid: Date.now(),
+      refeicao,
+      nome: food.nome,
+      qtd,
+      kcal: Math.round(food.kcal * factor)
+    };
+
+    cardapioSemanal[dia].push(itemCardapio);
+    salvarCardapio();
+    renderizarCardapioSemanal();
+    showToast(`Adicionado a ${dia}-feira!`, 'success');
+  });
+
+  function renderizarCardapioSemanal() {
+    const container = document.getElementById('weekly-container');
+    container.innerHTML = '';
+
+    const diasNomes = {
+      Segunda: "Segunda-feira", Terca: "Terça-feira", Quarta: "Quarta-feira",
+      Quinta: "Quinta-feira", Sexta: "Sexta-feira", Sabado: "Sábado", Domingo: "Domingo"
+    };
+
+    Object.keys(diasNomes).forEach(diaKey => {
+      const itens = cardapioSemanal[diaKey] || [];
+      let totalKcalDia = itens.reduce((acc, curr) => acc + curr.kcal, 0);
+
+      let htmlRefeicoes = '';
+      ['Café da Manhã', 'Almoço', 'Lanche', 'Jantar', 'Ceia'].forEach(ref => {
+        const porRef = itens.filter(i => i.refeicao === ref);
+        if (porRef.length > 0) {
+          htmlRefeicoes += `<div class="mb-2"><span class="text-[10px] font-bold uppercase text-slate-400 tracking-wider">${ref}</span>`;
+          porRef.forEach(item => {
+            htmlRefeicoes += `
+              <div class="flex justify-between items-center text-xs py-1 border-b border-dashed border-slate-200">
+                <span class="text-slate-700">${item.nome} (${item.qtd}g)</span>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-bold text-slate-900">${item.kcal} kcal</span>
+                  <button class="text-red-500 hover:text-red-700 font-bold" onclick="removerCardapio('${diaKey}', ${item.uid})">×</button>
+                </div>
+              </div>
+            `;
+          });
+          htmlRefeicoes += `</div>`;
+        }
+      });
+
+      if (!htmlRefeicoes) htmlRefeicoes = '<p class="text-xs text-slate-400 italic">Nenhum alimento planejado.</p>';
+
+      container.insertAdjacentHTML('beforeend', `
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+          <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+            <h3 class="font-bold text-slate-800 text-sm">${diasNomes[diaKey]}</h3>
+            <span class="text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded">${totalKcalDia} kcal</span>
+          </div>
+          ${htmlRefeicoes}
+        </div>
+      `);
+    });
+  }
+
+  function removerCardapio(diaKey, uid) {
+    cardapioSemanal[diaKey] = cardapioSemanal[diaKey].filter(i => i.uid !== uid);
+    salvarCardapio();
+    renderizarCardapioSemanal();
+  }
+
+  function salvarCardapio() {
+    localStorage.setItem('taco_cardapio', JSON.stringify(cardapioSemanal));
+  }
+
+  function gerarCardapioSugerido() {
+    const objetivo = document.getElementById('objetivo').value || 'emagrecer';
+    const cardapioModelo = {
+      emagrecer: {
+        "Café da Manhã": [{ id: 20, qtd: 100 }, { id: 3, qtd: 30 }, { id: 29, qtd: 120 }],
+        "Almoço": [{ id: 13, qtd: 150 }, { id: 1, qtd: 120 }, { id: 9, qtd: 100 }, { id: 23, qtd: 80 }],
+        "Lanche": [{ id: 35, qtd: 150 }, { id: 32, qtd: 100 }],
+        "Jantar": [{ id: 17, qtd: 150 }, { id: 21, qtd: 100 }, { id: 25, qtd: 80 }]
+      },
+      hipertrofia: {
+        "Café da Manhã": [{ id: 20, qtd: 150 }, { id: 5, qtd: 100 }, { id: 28, qtd: 120 }, { id: 36, qtd: 30 }],
+        "Almoço": [{ id: 15, qtd: 180 }, { id: 2, qtd: 180 }, { id: 10, qtd: 120 }],
+        "Lanche": [{ id: 3, qtd: 50 }, { id: 33, qtd: 200 }, { id: 28, qtd: 100 }],
+        "Jantar": [{ id: 13, qtd: 200 }, { id: 22, qtd: 150 }, { id: 23, qtd: 100 }]
+      }
+    };
+
+    const modelo = cardapioModelo[objetivo];
+    const dias = ['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado', 'Domingo'];
+
+    dias.forEach(dia => {
+      cardapioSemanal[dia] = [];
+      Object.keys(modelo).forEach(refeicao => {
+        modelo[refeicao].forEach(alimentoRef => {
+          const food = bancoTACO.find(f => f.id === alimentoRef.id);
+          cardapioSemanal[dia].push({
+            uid: Date.now() + Math.random(),
+            refeicao: refeicao,
+            nome: food.nome,
+            qtd: alimentoRef.qtd,
+            kcal: Math.round(food.kcal * (alimentoRef.qtd / 100))
+          });
+        });
+      });
+    });
+
+    salvarCardapio();
+    renderizarCardapioSemanal();
+    showToast('Cardapio semanal sugerido gerado!', 'success');
+  }
+
+  /* BANCO TACO SEARCH */
+  function renderizarTabelaTaco(dados) {
+    const tbody = document.querySelector('#tabela-taco-completa tbody');
+    tbody.innerHTML = '';
+    dados.forEach(item => {
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr class="hover:bg-slate-50">
+          <td class="p-3 font-semibold text-slate-800">${item.nome}</td>
+          <td class="p-3">${item.cat}</td>
+          <td class="p-3 font-medium text-emerald-700">${item.kcal} kcal</td>
+          <td class="p-3">${item.prot}g</td>
+          <td class="p-3">${item.carb}g</td>
+          <td class="p-3">${item.gord}g</td>
+          <td class="p-3">${item.fibra}g</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs font-semibold badge-${item.perfil}">${item.perfil}</span></td>
+        </tr>
+      `);
+    });
+  }
+
+  function filtrarTabelaTaco() {
+    const query = document.getElementById('taco-search').value.toLowerCase();
+    const filtrados = bancoTACO.filter(item => 
+      item.nome.toLowerCase().includes(query) || 
+      item.cat.toLowerCase().includes(query)
+    );
+    renderizarTabelaTaco(filtrados);
+  }
+
+  /* GEMINI FEATURE 1: MEAL SCANNER (PHOTO / TEXT) */
+  function handleImageSelected(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      selectedBase64Image = event.target.result.split(',')[1];
+      document.getElementById('image-preview').src = event.target.result;
+      document.getElementById('image-preview-container').classList.remove('hidden');
+      document.getElementById('image-prompt-text').classList.add('hidden');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearImagePreview(e) {
+    if (e) e.stopPropagation();
+    selectedBase64Image = null;
+    document.getElementById('image-input').value = '';
+    document.getElementById('image-preview-container').classList.add('hidden');
+    document.getElementById('image-prompt-text').classList.remove('hidden');
+  }
+
+  // Trigger file selection when clicking drop zone
+  document.getElementById('drop-zone').addEventListener('click', () => {
+    document.getElementById('image-input').click();
+  });
+
+  async function analisarRefeicaoComIA() {
+    const textMeal = document.getElementById('text-meal-input').value.trim();
+
+    if (!selectedBase64Image && !textMeal) {
+      showToast('Por favor, adicione uma foto ou digite a descrição da refeição.', 'error');
+      return;
+    }
+
+    document.getElementById('scanner-loading').classList.remove('hidden');
+    document.getElementById('scanner-empty').classList.add('hidden');
+    document.getElementById('scanner-result-table').classList.add('hidden');
+    document.getElementById('scanner-actions').classList.add('hidden');
+    document.getElementById('scan-badge').textContent = 'Analisando...';
+
+    const systemPrompt = `Você é um nutricionista especialista na Tabela TACO/TBCA brasileira. Analise a imagem ou texto fornecido e identifique cada item do prato com nome em português, quantidade estimando em gramas (qtd), calorias aproximadas (kcal), proteínas (prot), carboidratos (carb) e gorduras (gord).
+Retorne ESTRITAMENTE um JSON no formato de array de objetos com o seguinte esquema.`;
+
+    const jsonSchema = {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          nome: { type: "STRING" },
+          qtd: { type: "NUMBER" },
+          kcal: { type: "NUMBER" },
+          prot: { type: "NUMBER" },
+          carb: { type: "NUMBER" },
+          gord: { type: "NUMBER" }
+        },
+        required: ["nome", "qtd", "kcal", "prot", "carb", "gord"]
+      }
+    };
+
+    let parts = [];
+    if (textMeal) {
+      parts.push({ text: `Descrição da refeição: ${textMeal}` });
+    }
+    if (selectedBase64Image) {
+      parts.push({
+        inlineData: {
+          mimeType: "image/png",
+          data: selectedBase64Image
+        }
+      });
+      parts.push({ text: "Identifique todos os alimentos presentes nesta imagem do prato." });
+    }
+
+    const payload = {
+      contents: [{ role: "user", parts }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: jsonSchema
+      }
+    };
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+      const resp = await fetchWithBackoff(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      const rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!rawJson) throw new Error('Não foi possível identificar a refeição.');
+
+      scannerResultState = JSON.parse(rawJson);
+      renderScannerResults(scannerResultState);
+      showToast('Refeição analisada com sucesso!', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Erro ao analisar a refeição. Tente novamente.', 'error');
+      document.getElementById('scanner-empty').classList.remove('hidden');
+    } finally {
+      document.getElementById('scanner-loading').classList.add('hidden');
+    }
+  }
+
+  function renderScannerResults(items) {
+    const tbody = document.getElementById('scanner-tbody');
+    tbody.innerHTML = '';
+
+    items.forEach((item, index) => {
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr>
+          <td class="p-2 font-semibold text-slate-800">${item.nome}</td>
+          <td class="p-2"><input type="number" value="${item.qtd}" class="w-16 border rounded p-1" onchange="updateScannerItem(${index}, 'qtd', this.value)"></td>
+          <td class="p-2 font-medium text-emerald-700">${item.kcal.toFixed(0)}</td>
+          <td class="p-2">${item.prot.toFixed(1)}g</td>
+        </tr>
+      `);
+    });
+
+    document.getElementById('scan-badge').textContent = `${items.length} itens encontrados`;
+    document.getElementById('scanner-result-table').classList.remove('hidden');
+    document.getElementById('scanner-actions').classList.remove('hidden');
+  }
+
+  function updateScannerItem(index, prop, value) {
+    const val = parseFloat(value);
+    if (prop === 'qtd' && val > 0) {
+      const ratio = val / scannerResultState[index].qtd;
+      scannerResultState[index].qtd = val;
+      scannerResultState[index].kcal *= ratio;
+      scannerResultState[index].prot *= ratio;
+      scannerResultState[index].carb *= ratio;
+      scannerResultState[index].gord *= ratio;
+      renderScannerResults(scannerResultState);
+    }
+  }
+
+  function adicionarScannerAoDiario() {
+    const dataKey = document.getElementById('data-diario').value;
+    if (!diarioDados[dataKey]) diarioDados[dataKey] = [];
+
+    scannerResultState.forEach(item => {
+      diarioDados[dataKey].push({
+        uid: Date.now() + Math.random(),
+        nome: item.nome,
+        qtd: item.qtd,
+        kcal: item.kcal,
+        prot: item.prot,
+        carb: item.carb,
+        gord: item.gord
+      });
+    });
+
+    salvarDiario();
+    carregarDiarioDoDia();
+    showToast(`${scannerResultState.length} itens adicionados ao Diário de Hoje!`, 'success');
+  }
+
+  /* GEMINI FEATURE 2: GERADOR DE RECEITA + IMAGEN 4 */
+  async function gerarReceitaIA() {
+    const ingredients = document.getElementById('recipe-ingredients').value;
+    const type = document.getElementById('recipe-type').value;
+    const focus = document.getElementById('recipe-focus').value;
+
+    const btn = document.getElementById('btn-gerar-receita');
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Criando receita inteligente...`;
+
+    const prompt = `Crie uma receita saudável e apetitosa do tipo "${type}" focada em "${focus}". 
+Ingredientes disponíveis ou preferidos: ${ingredients || "Qualquer ingrediente comum"}.
+A receita deve ser equilibrada e alinhada com boas práticas nutricionais.`;
+
+    const systemPrompt = `Você é um chef e nutricionista brasileiro. Responda ESTRITAMENTE em formato JSON com o seguinte esquema:
+{
+  "title": "Nome da receita",
+  "prepTime": "Tempo estimado ex: 20 min",
+  "calories": 350,
+  "protein": 30,
+  "carbs": 25,
+  "fats": 10,
+  "ingredients": ["100g de frango", "1 ovo"],
+  "steps": ["Passo 1...", "Passo 2..."]
+}`;
+
+    const payload = {
+      contents: [{ parts: [{ text: prompt }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: { responseMimeType: "application/json" }
+    };
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+      const resp = await fetchWithBackoff(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      currentGeneratedRecipe = JSON.parse(rawText);
+      renderGeneratedRecipe(currentGeneratedRecipe);
+      showToast('Receita criada com sucesso!', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Erro ao gerar receita.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-utensils"></i> Gerar Receita com Gemini`;
+    }
+  }
+
+  function renderGeneratedRecipe(recipe) {
+    document.getElementById('recipe-title').textContent = recipe.title;
+    document.getElementById('recipe-meta').textContent = `⏱️ ${recipe.prepTime} | 🔥 ${recipe.calories} kcal | 🥩 Prot: ${recipe.protein}g | 🍞 Carb: ${recipe.carbs}g | 🥑 Gord: ${recipe.fats}g`;
+
+    const ingList = document.getElementById('recipe-ingredients-list');
+    ingList.innerHTML = recipe.ingredients.map(i => `<li>${i}</li>`).join('');
+
+    const stepList = document.getElementById('recipe-steps-list');
+    stepList.innerHTML = recipe.steps.map(s => `<li>${s}</li>`).join('');
+
+    document.getElementById('recipe-image-container').innerHTML = `
+      <div class="text-center p-4 text-slate-400">
+        <i class="fa-solid fa-image text-3xl mb-1"></i>
+        <p class="text-xs">Clique no botão abaixo para gerar uma foto ultra-realista da receita.</p>
+      </div>
+    `;
+
+    document.getElementById('recipe-output-card').classList.remove('hidden');
+  }
+
+  /* IMAGEN 4 IMAGE GENERATION */
+  async function gerarFotoComImagen4() {
+    if (!currentGeneratedRecipe) return;
+
+    const btn = document.getElementById('btn-generate-image');
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Gerando Foto Imagen 4...`;
+
+    const imagePrompt = `A professional food photography studio shot of ${currentGeneratedRecipe.title}, deliciously presented on a modern plate, natural warm lighting, gourmet restaurant styling, 8k resolution`;
+
+    const payload = {
+      instances: [{ prompt: imagePrompt }],
+      parameters: { sampleCount: 1 }
+    };
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
+      const resp = await fetchWithBackoff(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await resp.json();
+
+      if (result.predictions && result.predictions[0]?.bytesBase64Encoded) {
+        const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+        document.getElementById('recipe-image-container').innerHTML = `
+          <img src="${imageUrl}" class="w-full h-full object-cover rounded-lg shadow-md">
+        `;
+        showToast('Foto da receita gerada com Imagen 4!', 'success');
+      } else {
+        throw new Error('Formato de resposta inválido');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Erro ao gerar foto da receita.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Gerar Foto da Receita (Imagen 4)`;
+    }
+  }
+
+  /* GEMINI TTS (TEXT-TO-SPEECH) VOZ NATIVA */
+  async function falarModoPreparo() {
+    if (!currentGeneratedRecipe) return;
+
+    const textToSpeak = `Receita de ${currentGeneratedRecipe.title}. Modo de preparo: ${currentGeneratedRecipe.steps.join('. ')}`;
+    const btn = document.getElementById('btn-tts-recipe');
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Gerando Voz...`;
+
+    try {
+      await playGeminiTTS(textToSpeak);
+    } catch (err) {
+      console.error(err);
+      showToast('Erro ao gerar áudio de voz.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-volume-high text-brand-600"></i> Ouvir Modo de Preparo`;
+    }
+  }
+
+  async function playGeminiTTS(text) {
+    const payload = {
+      contents: [{ parts: [{ text: `Diga com clareza e ritmo natural em português do Brasil: ${text}` }] }],
+      generationConfig: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: "Aoede" }
+          }
+        }
+      }
+    };
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+    const resp = await fetchWithBackoff(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await resp.json();
+    const part = result?.candidates?.[0]?.content?.parts?.[0];
+    const base64Audio = part?.inlineData?.data;
+    const mimeType = part?.inlineData?.mimeType;
+
+    if (base64Audio && mimeType) {
+      const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+      const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 24000;
+      
+      const pcmBuffer = base64ToArrayBuffer(base64Audio);
+      const pcm16 = new Int16Array(pcmBuffer);
+      const wavBlob = pcmToWav(pcm16, sampleRate);
+      const audioUrl = URL.createObjectURL(wavBlob);
+
+      const audio = new Audio(audioUrl);
+      audio.play();
+      showToast('Reproduzindo áudio do Gemini...', 'info');
+    } else {
+      throw new Error('Falha ao obter áudio.');
+    }
+  }
+
+  // PCM16 TO WAV CONVERTER UTILITY
+  function base64ToArrayBuffer(base64) {
+    const binaryString = window.atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
+  function pcmToWav(pcm16, sampleRate = 24000) {
+    const numChannels = 1;
+    const bytesPerSample = 2;
+    const blockAlign = numChannels * bytesPerSample;
+    const byteRate = sampleRate * blockAlign;
+    const dataSize = pcm16.length * bytesPerSample;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+
+    function writeString(view, offset, string) {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    }
+
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeString(view, 8, 'WAVE');
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, 16, true);
+    writeString(view, 36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    let offset = 44;
+    for (let i = 0; i < pcm16.length; i++, offset += 2) {
+      view.setInt16(offset, pcm16[i], true);
+    }
+
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
+  /* GEMINI FEATURE 3: CHATBOT NUTRICIONAL CONTEXTUALIZADO */
+  let chatHistory = [];
+
+  function sendQuickChat(text) {
+    document.getElementById('chat-input').value = text;
+    handleChatSubmit(new Event('submit'));
+  }
+
+  async function handleChatSubmit(e) {
+    e.preventDefault();
+    const inputEl = document.getElementById('chat-input');
+    const userMessage = inputEl.value.trim();
+    if (!userMessage) return;
+
+    inputEl.value = '';
+    appendChatMessage('user', userMessage);
+
+    // Build context string from current profile & today's diary
+    const dataKey = document.getElementById('data-diario').value;
+    const hojeItens = diarioDados[dataKey] || [];
+    const totalKcal = hojeItens.reduce((a,b) => a + b.kcal, 0);
+    const totalProt = hojeItens.reduce((a,b) => a + b.prot, 0);
+
+    const peso = document.getElementById('peso').value;
+    const altura = document.getElementById('altura').value;
+    const objetivo = document.getElementById('objetivo').value;
+
+    const systemPrompt = `Você é o NutriFit IA, um nutricionista especialista baseado na Tabela TACO/TBCA brasileira.
+Contexto do Usuário:
+- Peso: ${peso}kg, Altura: ${altura}cm
+- Objetivo: ${objetivo}
+- Consumo de hoje registrado: ${totalKcal.toFixed(0)} kcal e ${totalProt.toFixed(1)}g de proteínas.
+Seja direto, encorajador, cientificamente preciso e amigável.`;
+
+    chatHistory.push({ role: 'user', parts: [{ text: userMessage }] });
+
+    const payload = {
+      contents: chatHistory,
+      systemInstruction: { parts: [{ text: systemPrompt }] }
+    };
+
+    const loadingId = appendChatLoading();
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+      const resp = await fetchWithBackoff(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Desculpe, não consegui entender.";
+
+      chatHistory.push({ role: 'model', parts: [{ text: reply }] });
+      removeChatLoading(loadingId);
+      appendChatMessage('model', reply);
+    } catch (err) {
+      console.error(err);
+      removeChatLoading(loadingId);
+      appendChatMessage('model', "Erro ao conectar com a IA. Verifique sua conexão e tente novamente.");
+    }
+  }
+
+  function appendChatMessage(role, text) {
+    const container = document.getElementById('chat-messages');
+    const msgDiv = document.createElement('div');
+
+    if (role === 'user') {
+      msgDiv.className = "bg-brand-600 text-white p-3 rounded-xl max-w-[85%] text-sm ml-auto";
+      msgDiv.textContent = text;
+    } else {
+      msgDiv.className = "bg-white border border-slate-200 p-3 rounded-xl max-w-[85%] text-sm text-slate-700 space-y-2";
+      msgDiv.innerHTML = `
+        <div class="font-bold text-xs text-brand-700 flex items-center justify-between">
+          <span><i class="fa-solid fa-robot"></i> Assistente NutriFit</span>
+          <button onclick="playGeminiTTS('${text.replace(/'/g, "\\'").replace(/\n/g, ' ')}')" class="text-slate-400 hover:text-brand-600 transition" title="Ouvir resposta">
+            <i class="fa-solid fa-volume-high"></i>
+          </button>
+        </div>
+        <div>${text.replace(/\n/g, '<br>')}</div>
+      `;
+    }
+
+    container.appendChild(msgDiv);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function appendChatLoading() {
+    const container = document.getElementById('chat-messages');
+    const id = 'chat-loading-' + Date.now();
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = id;
+    loadingDiv.className = "bg-white border border-slate-200 p-3 rounded-xl max-w-[85%] text-xs text-slate-400 italic flex items-center gap-2";
+    loadingDiv.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin text-brand-600"></i> Pensando...`;
+    container.appendChild(loadingDiv);
+    container.scrollTop = container.scrollHeight;
+    return id;
+  }
+
+  function removeChatLoading(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+</script>
+
+</body>
+</html>
